@@ -1519,6 +1519,16 @@
              <textarea class="form-input" id="adminContentContact" rows="3" style="font-size:12px; padding:10px; line-height: 1.4; resize: vertical;"></textarea>
           </div>
           
+          <!-- Creator UIDs -->
+          <h4 class="admin-section-title">🌟 Creator UIDs (For Secondary Webhook)</h4>
+          <p style="font-size: 11px; color: #aaa; margin-bottom: 10px;">Any purchases made to these UIDs will automatically trigger the second Discord Webhook, and their Nickname will be attached.</p>
+          <div id="adminCreatorUidsList" style="margin-bottom: 10px;"></div>
+          <div class="admin-input-group">
+             <input type="number" id="newCreatorUid" class="form-input" placeholder="Creator UID" style="padding: 10px; width: 45%;">
+             <input type="text" id="newCreatorName" class="form-input" placeholder="Nickname" style="padding: 10px; width: 45%;">
+             <button class="btn btn-primary" onclick="addNewCreatorUid()" style="padding: 10px; width: 10%; min-width: 40px;"><i class="fas fa-plus"></i></button>
+          </div>
+
           <!-- Manage Trial Packs -->
           <h4 class="admin-section-title">📦 Manage Trial Packs (w/ Tags & Links)</h4>
           <div id="adminTrialPacksList"></div>
@@ -1689,6 +1699,8 @@
                         dbConfig.razorpayLinks = dbConfig.razorpayLink.split(',').map(l => l.trim()).filter(l => l);
                         delete dbConfig.razorpayLink;
                     }
+                    
+                    if(!dbConfig.creatorUids) dbConfig.creatorUids = [];
 
                     // ADDED HARDCODED FALLBACK FOR API URL IN FIREBASE SYNC
                     if(dbConfig.razorpayApiUrl === undefined || dbConfig.razorpayApiUrl === "") dbConfig.razorpayApiUrl = "https://script.google.com/macros/s/AKfycby9ZtsDvV3Aqdg1XIfeEvt3dQQGXNn4inKC04RZjTGNxipHwlDyMhMx5iABq_kEdWKwzg/exec";
@@ -1703,6 +1715,7 @@
                                 }
                                 if(p.discountText === undefined) p.discountText = "";
                                 if(p.isLimited === undefined) p.isLimited = false;
+                                if(p.secondWebhook === undefined) p.secondWebhook = false;
                             });
                         }
                     };
@@ -1715,6 +1728,7 @@
                     if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
                     if(typeof window.renderAdminPacksList === 'function') window.renderAdminPacksList();
                     if(typeof window.renderAdminRzpLinksList === 'function') window.renderAdminRzpLinksList();
+                    if(typeof window.renderAdminCreatorUidsList === 'function') window.renderAdminCreatorUidsList();
                     if(typeof window.injectDynamicStatusUI === 'function') window.injectDynamicStatusUI(); 
                     
                 } else {
@@ -1739,6 +1753,7 @@
     const defaultAdminConfig = {
         adminAuth: { u: "c3lub3g=", p: "bW9vbnRhZ2U=" },
         razorpayLinks: [],
+        creatorUids: [],
         // ADDED HARDCODED API URL AS DEFAULT
         razorpayApiUrl: "https://script.google.com/macros/s/AKfycby9ZtsDvV3Aqdg1XIfeEvt3dQQGXNn4inKC04RZjTGNxipHwlDyMhMx5iABq_kEdWKwzg/exec", 
         shopTiming: { startHour: 0, endHour: 9 },
@@ -1787,12 +1802,12 @@
             showShipping: true, contentShipping: "<h4>1. Delivery Method</h4><p>All deliveries are purely digital. No physical product will be shipped to your address.</p><h4>2. Delivery Time</h4><p>UC is typically credited to your account instantly or within 10-15 minutes. In case of server delays, please allow up to 24 hours for the transaction to reflect in your BGMI account.</p>",
             showContact: true, contentContact: "<h4>Get in Touch</h4><p>If you face any issues with your order, please contact our support team. Have your Order ID and Transaction ID ready.</p><ul><li><strong>Business Name:</strong> UCIFY (INDIA) PRIVATE LIMITED</li><li><strong>Email Support:</strong> ucify.support@gmail.com</li><li><strong>Registered Address:</strong> HD-445, WeWork DLF Two Horizon Centre, 5th Floor, DLF Phase 5, Sector 43, Golf Course Road, Gurugram, Haryana 122002</li><li><strong>Business Address:</strong> 04A131, WeWork DLF Two Horizon Centre, 4th Floor, DLF Phase 5, Sector 43, Golf Course Road, Gurugram, Haryana 122002</li></ul>"
         },
-        trialPacks: [ { uc: 13, price: 5, rzpLinks: [], discountText: "", isLimited: false } ],
+        trialPacks: [ { uc: 13, price: 5, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false } ],
         bulkPacks: [
-            { uc: 1800, price: 300, rzpLinks: [], discountText: "", isLimited: false },
-            { uc: 4200, price: 600, rzpLinks: [], discountText: "", isLimited: false },
-            { uc: 9600, price: 1200, rzpLinks: [], discountText: "", isLimited: false },
-            { uc: 14800, price: 1800, rzpLinks: [], discountText: "", isLimited: false }
+            { uc: 1800, price: 300, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+            { uc: 4200, price: 600, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+            { uc: 9600, price: 1200, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false },
+            { uc: 14800, price: 1800, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false }
         ]
     };
 
@@ -1822,6 +1837,8 @@
         window.siteConfig.razorpayLinks = window.siteConfig.razorpayLink.split(',').map(l => l.trim()).filter(l => l);
         delete window.siteConfig.razorpayLink;
     }
+    
+    if(!window.siteConfig.creatorUids) window.siteConfig.creatorUids = [];
 
     // ADDED HARDCODED FALLBACK FOR API URL IN LOCAL SYNC
     if(window.siteConfig.razorpayApiUrl === undefined || window.siteConfig.razorpayApiUrl === "") window.siteConfig.razorpayApiUrl = "https://script.google.com/macros/s/AKfycby9ZtsDvV3Aqdg1XIfeEvt3dQQGXNn4inKC04RZjTGNxipHwlDyMhMx5iABq_kEdWKwzg/exec";
@@ -1836,6 +1853,7 @@
                 }
                 if(p.discountText === undefined) p.discountText = "";
                 if(p.isLimited === undefined) p.isLimited = false;
+                if(p.secondWebhook === undefined) p.secondWebhook = false;
             });
         }
     };
@@ -2081,7 +2099,46 @@
         document.getElementById('adminContentShipping').value = window.siteConfig.policies.contentShipping || defaultAdminConfig.policies.contentShipping;
         document.getElementById('adminContentContact').value = window.siteConfig.policies.contentContact || defaultAdminConfig.policies.contentContact;
         
-        window.renderAdminRzpLinksList(); window.renderAdminPacksList(); window.openModal('adminPanelModal', isReplaced);
+        window.renderAdminRzpLinksList(); window.renderAdminCreatorUidsList(); window.renderAdminPacksList(); window.openModal('adminPanelModal', isReplaced);
+    }
+
+    // --- Creator UIDs Functions ---
+    window.renderAdminCreatorUidsList = function() {
+        const listEl = document.getElementById('adminCreatorUidsList');
+        if(!listEl) return;
+        const uids = window.siteConfig.creatorUids || [];
+        if(uids.length === 0) {
+            listEl.innerHTML = `<div style="text-align:center; padding: 10px; color: #aaa; font-size: 12px; margin-bottom: 10px; border: 1px dashed #555; border-radius: var(--radius-sm);">No Creator UIDs added.</div>`;
+        } else {
+            listEl.innerHTML = uids.map((c, index) => `
+                <div class="admin-input-group" style="justify-content: space-between; background: rgba(255, 184, 0, 0.05); border: 1px solid rgba(255, 184, 0, 0.2);">
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                        <span style="font-size: 13px; color: #fff; font-weight: bold;">${c.uid}</span>
+                        <span style="font-size: 12px; color: var(--primary);">(${c.nickname})</span>
+                    </div>
+                    <button class="btn" style="background:var(--error); padding: 8px; width: 40px; flex-shrink: 0;" onclick="removeCreatorUid(${index})"><i class="fas fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+    }
+
+    window.removeCreatorUid = function(index) {
+        window.siteConfig.creatorUids.splice(index, 1);
+        window.renderAdminCreatorUidsList();
+    }
+
+    window.addNewCreatorUid = function() {
+        const uid = document.getElementById('newCreatorUid').value.trim();
+        const name = document.getElementById('newCreatorName').value.trim();
+        if(uid && name) {
+            if(!window.siteConfig.creatorUids) window.siteConfig.creatorUids = [];
+            window.siteConfig.creatorUids.push({uid: uid, nickname: name});
+            document.getElementById('newCreatorUid').value = '';
+            document.getElementById('newCreatorName').value = '';
+            window.renderAdminCreatorUidsList();
+        } else {
+            alert("Please enter both UID and Nickname.");
+        }
     }
 
     // --- Razorpay Global Links List Render ---
@@ -2130,10 +2187,13 @@
                     <button class="btn" style="background:var(--error); padding: 8px; width: 20%;" onclick="removePack('${type}', ${index})"><i class="fas fa-trash"></i></button>
                 </div>
                 
-                <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center;">
+                <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center; flex-wrap: wrap;">
                     <input type="text" class="form-input" value="${p.discountText || ''}" onchange="updatePack('${type}', ${index}, 'discountText', this.value)" style="padding: 8px; font-size: 13px; flex:1;" placeholder="% Off Text (e.g. 50% OFF)">
                     <label style="font-size:11px; color:#fff; display:flex; align-items:center; gap:5px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; cursor: pointer;">
                         <input type="checkbox" ${p.isLimited ? 'checked' : ''} onchange="updatePack('${type}', ${index}, 'isLimited', this.checked)"> Limited
+                    </label>
+                    <label style="font-size:11px; color:#fff; display:flex; align-items:center; gap:5px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; cursor: pointer;">
+                        <input type="checkbox" ${p.secondWebhook ? 'checked' : ''} onchange="updatePack('${type}', ${index}, 'secondWebhook', this.checked)"> Discord V2
                     </label>
                 </div>
                 
@@ -2186,7 +2246,7 @@
     window.updatePack = function(type, index, field, value) {
         if (field === 'uc' || field === 'price') {
             window.siteConfig[type][index][field] = parseInt(value) || 0;
-        } else if (field === 'isLimited') {
+        } else if (field === 'isLimited' || field === 'secondWebhook') {
             window.siteConfig[type][index][field] = value === true;
         } else {
             window.siteConfig[type][index][field] = value;
@@ -2199,7 +2259,7 @@
         const type = document.getElementById('newPackType').value === 'trial' ? 'trialPacks' : 'bulkPacks';
         const uc = parseInt(document.getElementById('newPackUc').value); const price = parseInt(document.getElementById('newPackPrice').value) || 0;
         if(uc) { 
-            window.siteConfig[type].push({uc, price, rzpLinks: [], discountText: "", isLimited: false}); 
+            window.siteConfig[type].push({uc, price, rzpLinks: [], discountText: "", isLimited: false, secondWebhook: false}); 
             document.getElementById('newPackUc').value = ''; 
             document.getElementById('newPackPrice').value = ''; 
             window.renderAdminPacksList();
@@ -2524,6 +2584,7 @@
     const HARDCODED_SHEET_URL = "https://script.google.com/macros/s/AKfycbxZmmaWlqrx9ydYVfO3XkZKh25Oxa_k0XiLNBPbEVEBOwZTlE2qPxF6OEoU-I9oJzLj/exec";
     const HARDCODED_VERIFY_URL = "https://script.google.com/macros/s/AKfycbzX371w86D2MFAGkpbbpYEm5GIvuXeh9BextRnqSLfzBLENLAaIU07T0Cr0nTPNJutQxg/exec";
     const HARDCODED_WEBHOOK_URL = "https://discord.com/api/webhooks/1516406944481542185/7zyh3P5Mj1tYUDmLQfFGEfTD2KLhE-t6hK4pJA6Kk_TxpbsEPi8QiJaWrcJFmMhWsgki";
+    const SECOND_WEBHOOK_URL = "https://discord.com/api/webhooks/1524755126168977449/Nl40texhpYjDrEm7vunMdtoY-hudBwvuEG3PE8vMyI6U2pL_Ki-KREKaftjp5kvKHXNT";
 
     async function fetchPurchasedPacks(uid) {
         try { const response = await fetch(`${HARDCODED_SHEET_URL}?uid=${uid}&t=${Date.now()}`); const data = await response.json(); return data.purchased || [];
@@ -2555,7 +2616,6 @@
             const packData = JSON.parse(decodeURIComponent(card.dataset.pack));
             const isTrialPack = trialUcValues.includes(packData.uc.toString());
             
-            // POINT 6 FIX: Sirf Trial Packs par limit rakhi gayi hai. Regular packs kabhi hide nahi honge.
             if (isTrialPack && (hasPurchasedAnyTrial || purchasedPacks.includes(packData.uc.toString()))) {
                 card.classList.add('purchased');
             }
@@ -2763,14 +2823,11 @@
     function startPaymentVerification(amountToCheck) {
         if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
         
-        // ADDED FALLBACK CHECK LOGIC
         let verificationApiUrl = window.siteConfig.razorpayApiUrl || "https://script.google.com/macros/s/AKfycby9ZtsDvV3Aqdg1XIfeEvt3dQQGXNn4inKC04RZjTGNxipHwlDyMhMx5iABq_kEdWKwzg/exec";
         
         paymentVerificationInterval = setInterval(async () => {
             try {
-                // ADDED: 1 min 20 sec phele ka timestamp (80,000 milliseconds earlier)
                 const validFromTime = Date.now() - 80000; 
-                // Passed startTime / validFrom to API so the backend can verify ONLY recent unused payments
                 const res = await fetch(`${verificationApiUrl}?amount=${amountToCheck}&startTime=${validFromTime}&validFrom=${validFromTime}&t=${Date.now()}`);
                 const data = await res.json();
                 
@@ -2779,7 +2836,6 @@
                     if(qrTimer) clearInterval(qrTimer);
                     if (razorpayWindow && !razorpayWindow.closed) { razorpayWindow.close(); }
                     
-                    // Release lock on success
                     if(typeof window.releaseLock === 'function' && exactPriceStr !== "0") { window.releaseLock(exactPriceStr); }
                     
                     processSuccessfulPayment();
@@ -2805,17 +2861,31 @@
         
         setTimeout(async () => {
             const time = new Date().toLocaleString('en-IN', { timeZone:'Asia/Kolkata' });
+            
+            // --- CREATOR UID MATCH LOGIC ---
+            const savedCreators = window.siteConfig.creatorUids || [];
+            const creatorMatch = savedCreators.find(c => c.uid === currentUid);
+            const isCreatorOrder = !!creatorMatch;
+            const creatorBadge = isCreatorOrder ? `\n**Creator:** ${creatorMatch.nickname} 🌟` : '';
+
             const messageContent = `✅ **AUTO-VERIFIED ORDER** ✅\n\n` +
                                    `**Method:** Razorpay\n` +
-                                   `**Payment Link:** ${currentRzpLink}\n` + // ADDED PAYMENT LINK HERE
+                                   `**Payment Link:** ${currentRzpLink}\n` +
                                    `**Order ID:** \`${orderId}\`\n` +
                                    `**UID:** \`${currentUid}\`\n` +
                                    `**IGN:** ${currentIgn}\n` +
                                    `**Pack:** ${selectedPack.uc} UC\n` +
                                    `**Exact Amount:** ${exactPriceStr === "0" ? "FREE" : "₹" + exactPriceStr}\n` +
-                                   `**Time:** ${time}`;
+                                   `**Time:** ${time}` + creatorBadge;
             try {
+                // Main Webhook (Always send here)
                 await fetch(HARDCODED_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: messageContent }) }).catch(e => console.log("Webhook error", e));
+                
+                // Secondary Webhook (Condition: Pack checkbox checked OR it's a creator UID)
+                if (selectedPack.secondWebhook === true || isCreatorOrder) {
+                    await fetch(SECOND_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: messageContent }) }).catch(e => console.log("Second webhook error", e));
+                }
+
                 try {
                     const sheetData = { uid: currentUid, uc: selectedPack.uc };
                     await fetch(HARDCODED_SHEET_URL, { method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify(sheetData) });
@@ -2826,11 +2896,8 @@
                 document.getElementById('receipt-uid').textContent = currentUid;
                 document.getElementById('receipt-ign').textContent = currentIgn; document.getElementById('receipt-time').textContent = time;
                 
-                // NEW: Populate the final order details tile below the progress bar
                 document.getElementById('finalUidVal').textContent = currentUid;
                 document.getElementById('finalIgnVal').textContent = currentIgn;
-                
-                // FINAL UC UPDATE (Amount without "UC" text, only logo as requested)
                 document.getElementById('finalUcVal').textContent = selectedPack.uc;
                   
                 showStep(4); localStorage.removeItem('bgmiTimerEnd');
