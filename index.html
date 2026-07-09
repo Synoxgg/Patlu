@@ -1055,7 +1055,7 @@
                <button type="button" id="rzpRedirectBtn" class="btn btn-primary pay-btn-animated">
                   <i class="fa-solid fa-shield-halved"></i> PAY <span id="btnPayAmount1" style="margin-left: 5px;">₹0</span>
                </button>
-               <div style="font-size: 13px; color: var(--text-muted); margin-top: 15px; font-weight: 600;">
+               <div id="payActionSubtitle" style="font-size: 13px; color: var(--text-muted); margin-top: 15px; font-weight: 600;">
                   Click pay to complete your transaction.
                </div>
                
@@ -1880,9 +1880,7 @@
         document.getElementById('dispStep1Title').textContent = getText('step1Title');
         document.getElementById('dispStep2Title').textContent = getText('step2Title');
         document.getElementById('dispStep3Title').textContent = getText('step3Title');
-        // document.getElementById('dispStep3Subnote').textContent = getText('step3Subnote'); // Visually hidden anyway
         
-        // DispTotalPayable is visually removed from normal UI, but this keeps the Admin system error-free
         if (document.getElementById('dispTotalPayable')) {
             document.getElementById('dispTotalPayable').textContent = getText('totalPayable');
         }
@@ -1914,7 +1912,6 @@
         document.getElementById('dispStep1Title').style.display = getTgl('showStep1Title') ? 'block' : 'none';
         document.getElementById('dispStep2Title').style.display = getTgl('showStep2Title') ? 'block' : 'none';
         document.getElementById('dispStep3Title').style.display = getTgl('showStep3Title') ? 'block' : 'none';
-        // document.getElementById('dispStep3Subnote').style.display = getTgl('showStep3Subnote') ? 'block' : 'none'; // Overridden via !important CSS
         
         document.getElementById('highValueWarning').style.display = getTgl('showWarnBanner') ? (parseInt(selectedPack?.price || 0) > 2000 ? 'block' : 'none') : 'none';
         document.getElementById('verificationStatus').style.display = getTgl('showAwaitingStatus') ? 'block' : 'none';
@@ -1945,6 +1942,9 @@
         const vStatus = document.getElementById('verificationStatus');
         if(!vStatus || vStatus.dataset.verified === "true") return; 
         
+        // Reset state for non-free interactions
+        vStatus.onclick = null;
+        vStatus.style.cursor = 'default';
         vStatus.style.background = "linear-gradient(145deg, rgba(14,14,18,0.9) 0%, rgba(5,5,7,0.95) 100%)";
         vStatus.style.border = "1px solid rgba(255, 184, 0, 0.2)";
         vStatus.style.boxShadow = "0 0 25px rgba(255, 184, 0, 0.05) inset, 0 10px 25px rgba(0,0,0,0.5)";
@@ -2663,18 +2663,24 @@
       document.getElementById('lockUI').style.display = 'none';
       
       const amountEl = document.getElementById('paymentAmount'); 
-      const payBtnAmount1 = document.getElementById('btnPayAmount1');
-      const payBtnAmount2 = document.getElementById('btnPayAmount2');
+      const step3TitleEl = document.getElementById('dispStep3Title');
+      const payActionSubtitleEl = document.getElementById('payActionSubtitle');
+      const rzpRedirectBtn = document.getElementById('rzpRedirectBtn');
+      const bottomPayBtn = document.getElementById('bottomPayBtn');
       
       if (isFreePack) {
+          step3TitleEl.textContent = "CLAIM FREE";
           amountEl.textContent = 'FREE';
-          if (payBtnAmount1) payBtnAmount1.innerHTML = 'CLAIM FREE';
-          if (payBtnAmount2) payBtnAmount2.innerHTML = 'CLAIM FREE';
+          rzpRedirectBtn.innerHTML = '<i class="fas fa-gift"></i> CLAIM FREE';
+          bottomPayBtn.innerHTML = '<i class="fas fa-gift"></i> CLAIM FREE';
+          if (payActionSubtitleEl) payActionSubtitleEl.textContent = "Click Claim Free to receive your UC.";
           document.getElementById('rzpModesImg').style.display = 'none'; 
       } else {
+          step3TitleEl.textContent = getText('step3Title');
           amountEl.textContent = '₹' + exactPriceStr;
-          if (payBtnAmount1) payBtnAmount1.textContent = '₹' + exactPriceStr;
-          if (payBtnAmount2) payBtnAmount2.textContent = '₹' + exactPriceStr;
+          rzpRedirectBtn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> PAY <span id="btnPayAmount1" style="margin-left: 5px;">₹' + exactPriceStr + '</span>';
+          bottomPayBtn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> PAY <span id="btnPayAmount2" style="margin-left: 5px;">₹' + exactPriceStr + '</span>';
+          if (payActionSubtitleEl) payActionSubtitleEl.textContent = "Click pay to complete your transaction.";
           document.getElementById('rzpModesImg').style.display = 'block';
       }
       
@@ -2689,15 +2695,26 @@
       document.getElementById('razorpayCard').style.display = 'block';
       document.getElementById('rzpExactAmountText').textContent = exactPriceStr;
       
+      const vStatus = document.getElementById('verificationStatus');
+      
       const handleRzpClick = function() {
           if (isFreePack) {
               if(qrTimer) clearInterval(qrTimer);
               if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
               
-              const currentBtn = this;
-              const originalBtnHtml = currentBtn.innerHTML;
-              currentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-              currentBtn.disabled = true;
+              // Disable elements to prevent multiple clicks
+              rzpRedirectBtn.disabled = true;
+              bottomPayBtn.disabled = true;
+              vStatus.onclick = null; 
+              
+              // Show processing animation
+              const processHtml = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+              rzpRedirectBtn.innerHTML = processHtml;
+              bottomPayBtn.innerHTML = processHtml;
+              
+              if (this === vStatus) {
+                  vStatus.innerHTML = `<div style="padding: 15px 0; color: var(--primary); font-weight: bold;">${processHtml}</div>`;
+              }
               
               setTimeout(() => {
                   processSuccessfulPayment();
@@ -2708,21 +2725,23 @@
           }
       };
       
-      document.getElementById('rzpRedirectBtn').onclick = handleRzpClick;
-      document.getElementById('bottomPayBtn').onclick = handleRzpClick;
+      rzpRedirectBtn.onclick = handleRzpClick;
+      bottomPayBtn.onclick = handleRzpClick;
       const rzpImg = document.getElementById('rzpModesImg');
       if(rzpImg) rzpImg.onclick = handleRzpClick;
       
       if (!isFreePack) {
+          vStatus.onclick = null;
+          vStatus.style.cursor = 'default';
           startQRTimer();
           startPaymentVerification(exactPriceStr);
       } else {
-          const vStatus = document.getElementById('verificationStatus');
+          vStatus.style.cursor = 'pointer';
+          vStatus.onclick = handleRzpClick;
           vStatus.innerHTML = `
               <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 15px 0;">
                   <i class="fas fa-gift" style="color: var(--success); font-size: 32px; animation: pulse 1.5s infinite;"></i>
                   <div style="font-family: var(--font-display); font-weight: 700; color: #fff; font-size: 18px; letter-spacing: 1px;">FREE PACK READY</div>
-                  <div style="font-size: 12px; color: var(--text-muted);">Click Claim Free above to receive your UC.</div>
               </div>
           `;
       }
@@ -2774,6 +2793,8 @@
         vStatus.dataset.verified = "true";
         vStatus.style.background = "rgba(0, 255, 157, 0.1)"; 
         vStatus.style.borderColor = "var(--success)";
+        vStatus.onclick = null;
+        vStatus.style.cursor = 'default';
         vStatus.innerHTML = `
             <div style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 5px 0;">
                 <i class="fas fa-check-circle" style="color: var(--success); font-size: 22px; animation: popIn 0.5s ease;"></i>
